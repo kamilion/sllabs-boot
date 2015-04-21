@@ -1,0 +1,4 @@
+venv/
+*.pyc
+static/firmware/voip/grandstream/
+

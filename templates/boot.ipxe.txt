@@ -1,0 +1,14 @@
+#!ipxe
+prompt --key 0x02 --timeout 2000 Press Ctrl-B for the iPXE command line... && shell ||
+
+:retry_dhcp
+dhcp && isset ${filename} || goto retry_dhcp
+echo Booting from ${filename}
+echo chain ${filename}
+echo OVERRIDDEN BY SCRIPT "boot.ipxe" AT BOOT.SLLABS.COM!!!
+echo Debug mode has been enabled. To continue, exit the shell
+echo by typing exit at the prompt, or manually continue with:
+echo chain http://boot.sllabs.com/remote.ipxe?mac=${net0/mac}&serial=12345&
+#shell
+chain http://boot.sllabs.com/remote.ipxe?mac=${net0/mac}&serial=12345&
+exit 0

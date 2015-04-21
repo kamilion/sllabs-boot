@@ -1,0 +1,5 @@
+#!ipxe
+
+echo Booting from local disks ...
+sleep 10
+exit 0

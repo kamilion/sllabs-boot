@@ -1,0 +1,300 @@
+#!ipxe
+
+:start
+#set url https://boot.salstar.sk/
+#set mirror http://ftp.upjs.sk${mirror_port}/pub
+#set sigs ${url}sigs/
+
+#iseq ${boot_salstar_version} 1 && goto version_ok ||
+#echo
+#echo IPXE version too old, rechaining ...
+#chain --replace ${url}/ipxe/ipxe.kpxe ||
+#:version_ok
+
+iseq ${cls} serial && goto ignore_cls ||
+set cls:hex 1b:5b:4a  # ANSI clear screen sequence - "^[[J"
+set cls ${cls:string}
+:ignore_cls
+
+set memtest_version 4.20
+
+isset ${admin_ip} || set admin_ip 158.197.240.41
+isset ${arch} && goto skip_arch_detect ||
+cpuid --ext 29 && set arch x86_64 || set arch i386
+:skip_arch_detect
+isset ${menu} && goto ${menu} ||
+
+isset ${ip} || dhcp || echo DHCP failed
+
+#Disable trust for now.
+#imgtrust
+
+:main_menu
+clear version
+set space:hex 20:20
+set space ${space:string}
+iseq ${arch} i386 && set arch5 i586 || set arch5 ${arch}
+iseq ${arch} x86_64 && set arch_a amd64 || set arch_a ${arch}
+menu Kamilion's Network Boot Menu [Local IP: ${netX/ip}]
+item --gap Default:
+item --key l local ${space} Boot local hdd [l]
+#item --gap Operating systems:
+# RPM based systems
+#item --key f fedora ${space} Fedora ${arch} [f]
+#item --key c centos ${space} CentOS ${arch} [c]
+#isset ${extended_menu} && item --key S scientific ${space} Scientific Linux ${arch} [S] ||
+#isset ${extended_menu} && item --key o opensuse ${space} openSUSE ${arch} [o] ||
+#isset ${extended_menu} && item --key M mageia ${space} Mageia ${arch5} [M] ||
+#isset ${extended_menu} && item --key D mandriva ${space} Mandriva ${arch5} [D] ||
+# Deb based systems
+#item --key b debian ${space} Debian ${arch_a} [b]
+#item --key u ubuntu ${space} Ubuntu ${arch_a} [u]
+# Others
+#isset ${extended_menu} && item --key A archlinux ${space} ArchLinux [A] ||
+#isset ${extended_menu} && item --key L slackware ${space} Slackware ${bits} bit [L] ||
+#item --key p pmagic ${space} Parted Magic [p]
+#isset ${extended_menu} && item --key z clonezilla ${space} Clonezilla [z] ||
+#isset ${extended_menu} && item --key R rescatux ${space} RescaTux [R] ||
+# BSD systems
+#isset ${extended_menu} && item --key y bsd ${space} BSD systems [y] ||
+# DOS
+#item --key d dos ${space} FreeDOS [d]
+#isset ${extended_menu} || item --key x extended_menu ${space} Other systems [x]
+item --gap Options:
+iseq ${arch} x86_64 && set bits 64 || set bits 32
+item --key a changebits ${space} Architecture: ${arch} (${bits}bit) [a]
+item --key 0x09 params_menu ${space} Kernel parameters: ${params}
+item --gap Tools:
+#isset ${extended_menu} && item --key N netinfo ${space} Network card info [N] ||
+item --key N netinfo ${space} Network card info [N] ||
+#item --key h hdt ${space} Hardware detection tool [h]
+#item --key m memtest ${space} MemTest86+ ${memtest_version} [m]
+#item --key . predefined ${space} Predefined systems menu [.]
+item --key s shell ${space} iPXE shell [s]
+isset ${menu} && set timeout 0 || set timeout 60000
+choose --timeout ${timeout} --default ${menu} menu || goto local
+echo ${cls}
+goto ${menu} ||
+#imgverify ${menu}.ipxe ${sigs}${menu}.ipxe.sig || goto error
+chain ${menu}.ipxe || goto error
+goto main_menu
+
+:error
+echo Error occured, press any key to return to menu ...
+prompt
+goto main_menu
+
+:local
+# Just to make sure if an outer script has control still,
+# that we'll get back into the :main_menu instead of returning
+# to the :local menu.
+set menu main_menu
+echo Booting from local disks ...
+exit 0
+
+:reload
+echo Reloading menu.ipxe ...
+#imgverify menu.ipxe ${sigs}menu.ipxe
+chain menu.ipxe
+
+:pxelinux
+echo Loading pxelinux ...
+set next-server 158.197.16.70
+set 209:string pxelinux.cfg/default
+set 210:string tftp://${next-server}/
+kernel ${url}pxelinux.0
+#imgverify pxelinux.0 ${sigs}pxelinux.0.sig
+boot
+
+:netinfo
+menu Network info
+item --gap MAC:
+item mac ${space} ${netX/mac}
+item --gap IP/mask:
+item ip ${space} ${netX/ip}/${netX/netmask}
+item --gap Gateway:
+item gw ${space} ${netX/gateway}
+item --gap Domain:
+item domain ${space} ${netX/domain}
+item --gap DNS:
+item dns ${space} ${netX/dns}
+item --gap DHCP server:
+item dhcpserver ${space} ${netX/dhcp-server}
+item --gap Next-server:
+item nextserver ${space} ${next-server}
+item --gap Filename:
+item filename ${space} ${netX/filename}
+choose empty ||
+goto main_menu
+
+:hdt
+set 209:string hdt
+set 210:string ${url}pxelinux.cfg/
+kernel ${url}pxelinux.0
+#imgverify pxelinux.0 ${sigs}pxelinux.0.sig
+boot
+goto main_menu
+
+:memtest
+#kernel ${url}images/memtest
+#imgverify memtest ${sigs}images/memtest.sig
+#boot
+#imgverify ${url}images/memtest.0 ${sigs}images/memtest.0.sig
+chain memtest.0 ${params} && goto main_menu ||
+echo MEMORY ERROR DETECTED! ${errno}
+echo Press any key to continue ...
+read a
+goto main_menu
+
+:shell
+echo Type "exit" to return to menu.
+# temporarily disable imgtrust for shell
+#imgtrust --allow
+set menu main_menu
+shell
+#imgtrust
+goto main_menu
+
+:changebits
+iseq ${arch} x86_64 && set arch i386 || set arch x86_64
+goto main_menu
+
+# this is not used yet
+:select_arch
+menu Select architecture
+item --gap Basic:
+item --key 3 i386 i386 (32 bit) [3]
+item --key 6 x86_64 x86_64/amd64 (64 bit) [6]
+item --gap Extended:
+item i486 i486
+item i586 i586
+item i686 i686
+choose --default ${march} march || goto main_menu
+goto set_arch_${march}
+
+:set_arch_i386
+set arch i386
+set arch_a i386
+set xarch x86
+goto main_menu
+
+:set_arch_x86_64
+set arch x86_64
+set arch_a amd64
+set xarch x64
+goto main_menu
+
+:set_arch_i486
+set arch i386
+set arch_a i386
+set xarch x86
+goto main_menu
+
+:set_arch_i586
+set arch i386
+set arch_a i386
+set xarch x86
+goto main_menu
+
+:set_arch_i686
+set arch i386
+set arch_a i386
+set xarch x86
+goto main_menu
+
+:params_menu
+menu Kernel parameters
+item --gap Current: ${params}
+item --gap
+#item --key x exit Return to main menu [x]
+item --key e set Edit parameters [e]
+item --key v vnc VNC installation [v]
+item --key 0 ttyS0 Serial console ttyS0 [0]
+item --key 1 ttyS1 Serial cosnole ttyS1 [1]
+item --key t text Text mode install [t]
+item --key n network Static network configuration [n]
+item --key m nomodeset Disable KMS (nomodeset) [m]
+item --key a autopart Autopartition [a]
+choose kp || goto main_menu
+echo ${cls}
+goto params_${kp}
+
+# Kernel parameters
+:params_set
+echo -n Enter parameters: ${} && read params
+goto params_menu
+
+:params_vnc
+set params ${params} vnc vncconnect=${admin_ip}:5500
+goto params_menu
+
+:params_ttyS0
+set serial_port ttyS0
+goto params_serial
+
+:params_ttyS1
+set serial_port ttyS1
+
+:params_serial
+menu Serial console speed
+item --key 0 none Don't set [0]
+item --key 1 ,115200 115200 [1]
+item --key 2 ,57600 57600 [2]
+item --key 3 ,38400 38400 [3]
+item --key 4 ,9600 9600 [4]
+choose serial_speed || goto params_menu
+iseq ${serial_speed} none && clear serial_speed ||
+set params ${params} console=${serial_port}${serial_speed}
+goto params_menu
+
+:params_text
+set params ${params} text nomodeset
+goto params_menu
+
+:params_network
+menu Static network configuration
+item --key f fedora Fedora 17+ style (dracut options) [f]
+item --key c centos CentOS style [c]
+choose netos || goto params_menu
+iseq ${netos} fedora && set params ${params} ip=${ip}::${gateway}:${netmask}:${ip}::none nameserver=${dns} ||
+iseq ${netos} centos && set params ${params} ip=${ip} gateway=${gateway} netmask=${netmask} dns=${dns} ||
+goto params_menu
+
+:params_nomodeset
+set params ${params} nomodeset
+goto params_menu
+
+:params_autopart
+menu Autopartition
+item --key t root4max part=root=4,vg=vg1,swap=1 [t]
+item --key 4 root4 part=root=4,swap=1 [4]
+item --key 3 root3 part=root=3,swap=1 [3]
+choose autopart || goto params_menu
+iseq ${autopart} root4max && set params ${params} part=root=4,vg=vg1,swap=1
+iseq ${autopart} root4 && set params ${params} part=root=4,swap=1 ||
+iseq ${autopart} root3 && set params ${params} part=root=3,swap=1 ||
+goto params_menu
+
+:extended_menu
+isset ${extended_menu} && clear extended_menu || set extended_menu 1
+goto main_menu
+
+# OS
+:fedora
+:centos
+:scientific
+#imgverify fedora.ipxe ${sigs}fedora.ipxe.sig
+chain fedora.ipxe
+goto main_menu
+
+:debian
+:ubuntu
+#imgverify deb.ipxe ${sigs}deb.ipxe.sig
+chain deb.ipxe
+goto main_menu
+
+# Predefined systems
+:predefined
+#imgverify predefined.ipxe ${sigs}predefined.ipxe.sig
+chain predefined.ipxe
+goto main_menu
