@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from flask import Flask
+from flask import request
 from flask import make_response
 from flask import render_template
 app = Flask(__name__)
@@ -9,6 +10,12 @@ app.debug = True
 @app.route("/")
 def hello(name=None):
     return render_template('index.html', name=name)
+
+@app.route("/template.ipxe")
+def template():
+    resp = make_response(render_template('template.ipxe.txt', name=request.args.get('name', '')))
+    resp.mimetype = 'text/plain'
+    return resp
 
 @app.route("/localboot.ipxe")
 def localboot(name=None):
