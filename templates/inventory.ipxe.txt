@@ -1,7 +1,10 @@
 #!ipxe
-echo Received host inventory.
+echo |------------------------------------------------------------------------------|
+echo |-----------------------| Received host inventory |----------------------------|
+echo |------------------------------------------------------------------------------|
 echo MAC Address: {{ mac }}
 echo IP Address: {{ ip }}
 echo UUID: {{ uuid }}
+
 chain ${boot-host}remote.ipxe
 exit 0

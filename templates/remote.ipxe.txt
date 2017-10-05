@@ -1,3 +1,8 @@
 #!ipxe
+echo |------------------------------------------------------------------------------|
+echo |--------------------------| Remote Boot Control |-----------------------------|
+echo |------------------------------------------------------------------------------|
+sleep 3
+prompt --key 0x02 --timeout 7000 Press Ctrl-B for the iPXE command line... && shell ||
 chain ${boot-host}menu.ipxe
 exit 0
