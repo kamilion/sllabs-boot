@@ -1,0 +1,4 @@
+#!ipxe
+
+echo Rebooting ...
+reboot

@@ -1,9 +1,8 @@
 #!ipxe
 
 :start
-#set url ${boot-host}
-set url http://10.0.1.10/
-#set mirror http://10.0.1.10/
+#set url https://boot.salstar.sk/
+#set mirror http://ftp.upjs.sk${mirror_port}/pub
 #set sigs ${url}sigs/
 
 #iseq ${boot_salstar_version} 1 && goto version_ok ||
@@ -30,9 +29,6 @@ isset ${ip} || dhcp || echo DHCP failed
 #Disable trust for now.
 #imgtrust
 
-# Enable our pretty console picture.
-console --picture http://10.0.1.10/images/m3boot.png --left 32 --right 32 --top 32 --bottom 32
-
 :main_menu
 clear version
 set space:hex 20:20
@@ -42,9 +38,7 @@ iseq ${arch} x86_64 && set arch_a amd64 || set arch_a ${arch}
 menu Kamilion's Network Boot Menu [Local IP: ${netX/ip}]
 item --gap Default:
 item --key l local ${space} Boot local hdd [l]
-item --key b bios ${space} Reflash BIOS [b]
-item --key . predefined ${space} Predefined systems menu [.]
-item --gap Operating system installers:
+#item --gap Operating systems:
 # RPM based systems
 #item --key f fedora ${space} Fedora ${arch} [f]
 #item --key c centos ${space} CentOS ${arch} [c]
@@ -53,27 +47,35 @@ item --gap Operating system installers:
 #isset ${extended_menu} && item --key M mageia ${space} Mageia ${arch5} [M] ||
 #isset ${extended_menu} && item --key D mandriva ${space} Mandriva ${arch5} [D] ||
 # Deb based systems
-item --key i debian ${space} Debian ${arch_a} [i]
-item --key u ubuntu ${space} Ubuntu ${arch_a} [u]
+#item --key b debian ${space} Debian ${arch_a} [b]
+#item --key u ubuntu ${space} Ubuntu ${arch_a} [u]
 # Others
 #isset ${extended_menu} && item --key A archlinux ${space} ArchLinux [A] ||
 #isset ${extended_menu} && item --key L slackware ${space} Slackware ${bits} bit [L] ||
-item --key p pmagic ${space} Parted Magic [p]
-item --key z salstar ${space} boot.salstar.sk [z]
+#item --key p pmagic ${space} Parted Magic [p]
+#isset ${extended_menu} && item --key z clonezilla ${space} Clonezilla [z] ||
+#isset ${extended_menu} && item --key R rescatux ${space} RescaTux [R] ||
+# BSD systems
+#isset ${extended_menu} && item --key y bsd ${space} BSD systems [y] ||
 # DOS
-item --key d dos ${space} FreeDOS [d]
+#item --key d dos ${space} FreeDOS [d]
 #isset ${extended_menu} || item --key x extended_menu ${space} Other systems [x]
 item --gap Options:
 iseq ${arch} x86_64 && set bits 64 || set bits 32
 item --key a changebits ${space} Architecture: ${arch} (${bits}bit) [a]
 item --key 0x09 params_menu ${space} Kernel parameters: ${params}
 item --gap Tools:
-item --key t tools ${space} Hardware tools [t]
+#isset ${extended_menu} && item --key N netinfo ${space} Network card info [N] ||
+item --key N netinfo ${space} Network card info [N] ||
+#item --key h hdt ${space} Hardware detection tool [h]
+#item --key m memtest ${space} MemTest86+ ${memtest_version} [m]
+#item --key . predefined ${space} Predefined systems menu [.]
 item --key s shell ${space} iPXE shell [s]
-isset ${menu} && set timeout 0 || set timeout 10000
+isset ${menu} && set timeout 0 || set timeout 60000
 choose --timeout ${timeout} --default ${menu} menu || goto local
 echo ${cls}
 goto ${menu} ||
+#imgverify ${menu}.ipxe ${sigs}${menu}.ipxe.sig || goto error
 chain ${menu}.ipxe || goto error
 goto main_menu
 
@@ -92,6 +94,7 @@ exit 0
 
 :reload
 echo Reloading menu.ipxe ...
+#imgverify menu.ipxe ${sigs}menu.ipxe
 chain menu.ipxe
 
 :pxelinux
@@ -100,11 +103,47 @@ set next-server 158.197.16.70
 set 209:string pxelinux.cfg/default
 set 210:string tftp://${next-server}/
 kernel ${url}pxelinux.0
+#imgverify pxelinux.0 ${sigs}pxelinux.0.sig
 boot
 
-:tools
-#imgverify tools.ipxe ${sigs}tools.ipxe.sig || goto error
-chain tools.ipxe || goto error
+:netinfo
+menu Network info
+item --gap MAC:
+item mac ${space} ${netX/mac}
+item --gap IP/mask:
+item ip ${space} ${netX/ip}/${netX/netmask}
+item --gap Gateway:
+item gw ${space} ${netX/gateway}
+item --gap Domain:
+item domain ${space} ${netX/domain}
+item --gap DNS:
+item dns ${space} ${netX/dns}
+item --gap DHCP server:
+item dhcpserver ${space} ${netX/dhcp-server}
+item --gap Next-server:
+item nextserver ${space} ${next-server}
+item --gap Filename:
+item filename ${space} ${netX/filename}
+choose empty ||
+goto main_menu
+
+:hdt
+set 209:string hdt
+set 210:string ${url}pxelinux.cfg/
+kernel ${url}pxelinux.0
+#imgverify pxelinux.0 ${sigs}pxelinux.0.sig
+boot
+goto main_menu
+
+:memtest
+#kernel ${url}images/memtest
+#imgverify memtest ${sigs}images/memtest.sig
+#boot
+#imgverify ${url}images/memtest.0 ${sigs}images/memtest.0.sig
+chain memtest.0 ${params} && goto main_menu ||
+echo MEMORY ERROR DETECTED! ${errno}
+echo Press any key to continue ...
+read a
 goto main_menu
 
 :shell
@@ -244,15 +283,18 @@ goto main_menu
 :fedora
 :centos
 :scientific
+#imgverify fedora.ipxe ${sigs}fedora.ipxe.sig
 chain fedora.ipxe
 goto main_menu
 
 :debian
 :ubuntu
+#imgverify deb.ipxe ${sigs}deb.ipxe.sig
 chain deb.ipxe
 goto main_menu
 
 # Predefined systems
 :predefined
+#imgverify predefined.ipxe ${sigs}predefined.ipxe.sig
 chain predefined.ipxe
 goto main_menu
