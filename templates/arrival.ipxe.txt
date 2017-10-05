@@ -33,14 +33,14 @@ echo CHASSIS: ${si-vendor} ${si-product_name} ${si-serial} ${si-version}
 echo BOARD: ${board-vendor} ${board-product_name} ${board-serial} ${board-asset}
 echo BIOS: ${bios-vendor} ${bios-version} ${bios-revision}
 echo CPU: ${cpu-name}
-echo |------------------------------------------------------------------------------|
-echo |-------------------------| Enumerating CPUS... |------------------------------|
-echo |------------------------------------------------------------------------------|
-echo CPU0: Type ${cpu0type}
-echo CPU1: Type ${cpu1type}
-echo CPU2: Type ${cpu2type}
-echo CPU3: Type ${cpu3type}
-echo |------------------------------------------------------------------------------|
+#echo |------------------------------------------------------------------------------|
+#echo |-------------------------| Enumerating CPUS... |------------------------------|
+#echo |------------------------------------------------------------------------------|
+#echo CPU0: Type ${cpu0type}
+#echo CPU1: Type ${cpu1type}
+#echo CPU2: Type ${cpu2type}
+#echo CPU3: Type ${cpu3type}
+#echo |------------------------------------------------------------------------------|
 
 # Build up the URL parameters to send
 set inv:string mac=${net0/mac}

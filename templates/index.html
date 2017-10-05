@@ -27,16 +27,54 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.ico') }}">
   <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/favicon.ico') }}">
 
+  <!-- Javascript
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <script src="{{ url_for('static', filename='js/zepto.min.js') }}"></script>
+
+  <script>
+      //sample ajax call in page
+      (function($){
+          $.ajax({
+          type: 'GET',
+          url:'/config/get',
+          dataType: 'json',
+          success: function(data) {
+            console.log(data);
+            $('.container').append('<div class="row"> Up ' +
+                data.uptime + ' Seconds, Last: ' +
+                data['last'].ip + ' (' +
+                data['last'].mac +
+                ')</div>');
+            $.each(data['data'], function(i, item) {
+              console.log(item);
+              $('.container').append(
+                  '<div class="row">' +
+                  "<a href='/config/set/" + i +
+                  "?value=inhibit'>O</a> " +
+                  data['data'][i].ip + ' (' +
+                  data['data'][i].mac + '): ' +
+                  data['data'][i].uuid + ' Seen: ' +
+                  data['data'][i].time + ' ' +
+                  '</div>'
+              );
+            });
+          }
+        })
+      })(Zepto || jQuery);
+  </script>
+
 </head>
 <body>
 
   <!-- Primary Page Layout
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
-  <div class="container">
-    <div class="row">
-      <div class="one-half column" style="margin-top: 25%">
-        <h4>No Boot Template specified</h4>
-        <p>You must specify a boot template to continue.</p>
+  <div class="section hero">
+    <div class="container">
+      <div class="row">
+        <div class="one-half column" style="margin-top: 25%">
+          <h4>No Boot Template specified</h4>
+          <p>You must specify a boot template to continue.</p>
+        </div>
       </div>
     </div>
   </div>
